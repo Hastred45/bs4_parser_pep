@@ -7,9 +7,19 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL, MAIN_PEP_URL, EXPECTED_STATUS
+from constants import (BASE_DIR,
+                       MAIN_DOC_URL,
+                       MAIN_PEP_URL,
+                       EXPECTED_STATUS,
+                       RESULTS_WHATS_NEW,
+                       RESULTS_LATEST)
+from exceptions import BadMode
 from outputs import control_output
 from utils import get_response, find_tag
+
+DOWNLOADS_DIR = BASE_DIR / 'downloads'
+WHATS_NEW_URL = urljoin(MAIN_DOC_URL, 'whatsnew/')
+DOWNLOADS_URL = urljoin(MAIN_DOC_URL, 'download.html')
 
 
 def whats_new(session):
@@ -17,8 +27,7 @@ def whats_new(session):
     Cобирает ссылки на статьи о нововведениях в Python
     и достает из них справочную информацию
     '''
-    whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    response = session.get(whats_new_url)
+    response = get_response(session, WHATS_NEW_URL)
     response.encoding = 'utf-8'
     if response is None:
         return
@@ -28,10 +37,10 @@ def whats_new(session):
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'}
         )
-    results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+    results = RESULTS_WHATS_NEW
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
-        version_link = urljoin(whats_new_url, version_a_tag['href'])
+        version_link = urljoin(WHATS_NEW_URL, version_a_tag['href'])
         response = get_response(session, version_link)
         if response is None:
             continue
@@ -59,7 +68,7 @@ def latest_versions(session):
             break
     else:
         raise Exception('Ничего не нашлось')
-    results = [('Ссылка на документацию', 'Версия', 'Статус')]
+    results = RESULTS_LATEST
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
@@ -74,8 +83,7 @@ def latest_versions(session):
 
 def download(session):
     '''Скачивает архив с документацией Python'''
-    downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
-    response = get_response(session, downloads_url)
+    response = get_response(session, DOWNLOADS_URL)
     if response is None:
         return
     soup = BeautifulSoup(response.text, 'lxml')
@@ -84,7 +92,7 @@ def download(session):
         table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')}
         )
     pdf_a4_link = pdf_a4_tag['href']
-    archive_url = urljoin(downloads_url, pdf_a4_link)
+    archive_url = urljoin(DOWNLOADS_URL, pdf_a4_link)
     filename = archive_url.split('/')[-1]
     downloads_dir = BASE_DIR / 'downloads'
     downloads_dir.mkdir(exist_ok=True)
@@ -160,7 +168,13 @@ def main():
     if args.clear_cache:
         session.cache.clear()
     parser_mode = args.mode
-    results = MODE_TO_FUNCTION[parser_mode](session)
+    try:
+        results = MODE_TO_FUNCTION[parser_mode](session)
+    except BadMode:
+        logging.exception(
+            f'Выбран неправильный режим работы {parser_mode}',
+            stack_info=True
+        )
     if results is not None:
         control_output(results, args)
     logging.info('Парсер завершил работу.')

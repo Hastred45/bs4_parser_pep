@@ -14,3 +14,5 @@ EXPECTED_STATUS = {
         'W': ('Withdrawn'),
         '': ('Draft', 'Active'),
     }
+RESULTS_WHATS_NEW = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+RESULTS_LATEST = [('Ссылка на документацию', 'Версия', 'Статус')]
