@@ -21,14 +21,14 @@
 - Клонируйте репозиторий и перейдите в него:
 
 ```bash
-git clone git@github.com:photometer/bs4_parser_pep.git
+git clone git@github.com:Hastred45/bs4_parser_pep.git
 cd bs4_parser pep
 ```
 
 - Cоздайте и активируйте виртуальное окружение:
 
 ```bash
-python -m venv env
+python -m venv venv
 . venv/scripts/activate
 ```
 
